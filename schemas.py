@@ -1,48 +1,49 @@
 """
-Database Schemas
+Database Schemas for Velodent Chat & CRM Logging
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
+Each Pydantic model below represents a MongoDB collection. The collection
+name is the lowercase of the class name.
 
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Examples:
+- Lead -> "lead"
+- Event -> "event"
+- Transcript -> "transcript"
 """
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field, EmailStr
 
-from pydantic import BaseModel, Field
-from typing import Optional
 
-# Example schemas (replace with your own):
-
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
+class Lead(BaseModel):
+    """Leads captured from the website chat widget or forms"""
     name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    email: Optional[EmailStr] = Field(None, description="Contact email")
+    phone: Optional[str] = Field(None, description="Contact phone number")
+    preferred_times: Optional[str] = Field(None, description="Preferred times or availability notes")
+    intent: Optional[str] = Field(None, description="Primary user intent (booking, reschedule, insurance_check, payment_query, callback)")
+    source: str = Field("website", description="Source of lead (e.g., website)")
+    page: Optional[str] = Field(None, description="Page slug or URL where lead originated")
+    session_id: Optional[str] = Field(None, description="Session identifier to link conversation")
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
 
-# Add your own schemas here:
-# --------------------------------------------------
+class Event(BaseModel):
+    """Events emitted by the chat widget for analytics and auditing"""
+    event_type: str = Field(..., description="Event type (chat_started, lead_captured, booking_requested, insurance_check_requested, handoff_requested)")
+    source: str = Field("website", description="Source such as website")
+    page: Optional[str] = Field(None, description="Page slug or URL")
+    session_id: Optional[str] = Field(None, description="Session identifier")
+    payload: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional event data")
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+
+class ChatMessage(BaseModel):
+    role: str = Field(..., description="Message role: user or assistant")
+    content: str = Field(..., description="Message text content")
+    timestamp: Optional[str] = None
+
+
+class Transcript(BaseModel):
+    session_id: str = Field(..., description="Session identifier")
+    lead_email: Optional[EmailStr] = None
+    lead_phone: Optional[str] = None
+    lead_name: Optional[str] = None
+    page: Optional[str] = None
+    messages: List[ChatMessage] = Field(default_factory=list, description="Ordered list of messages")
